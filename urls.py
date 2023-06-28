@@ -38,7 +38,7 @@ urlAndroid = [
     "https://play.google.com/store/apps/details?id=com.buckeyebroadband.mybuckeye&hl=en_US&gl=US",  # MyBuckeye
 ]
 
-urliOS = [
+urlIOS = [
     "https://apps.apple.com/us/app/go-kinetic-by-windstream/id1342262959",  # GoKinectByWindstream
     "https://apps.apple.com/us/app/my-altafiber/id1245014739",  # MyAltafiber
     "https://apps.apple.com/us/app/spectrum-access-enabled-media/id1492182876",  # SpectrumAccess

@@ -58,7 +58,7 @@ appNamesIOS = [
     "Visible mobile",
     "SpectrumU",
     "Spectrum TV",
-    "myAT&T",
+    "myAT&amp;T",
     "Spectrum SportsNet: Live Games",
     "MediacomConnect",
     "MyMetro",
