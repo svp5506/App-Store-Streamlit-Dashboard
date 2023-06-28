@@ -70,6 +70,3 @@ dataCombined = dataCombined[
         "Android Total Reviews",
     ]
 ]
-
-# Export to Excel
-dataCombined.to_excel("combinedRatings.xlsx", index=False)
