@@ -11,7 +11,6 @@ from appKey import keyIOS, keyAndroid
 conn = sqlite3.connect("Database/app_store_stats.db")
 cursor = conn.cursor()
 
-
 # Scrape iOS App Store Data
 def scrapeDataIOS(urlIOS):
     result = requests.get(urlIOS)
@@ -58,20 +57,6 @@ dataIOS.set_index("Mapping", inplace=True)
 now = datetime.now()
 dataIOS.insert(0, "Timestamp", now.strftime("%Y-%m-%d %H:%M:%S"))
 dataIOS.insert(0, "Date", now.strftime("%B %d, %Y"))
-
-# Check for duplicate data, App Data should exist for only one instance per day
-today = date.today().strftime("%Y-%m-%d")
-unique_dataIOS = dataIOS[dataIOS["Timestamp"].str.startswith(today)].copy()
-cursor.execute(f"SELECT * FROM tableIOS WHERE [Date] = '{now.strftime('%B %d, %Y')}'")
-existing_data = cursor.fetchall()
-if existing_data:
-    cursor.execute(f"DELETE FROM tableIOS WHERE [Date] = '{now.strftime('%B %d, %Y')}'")
-    conn.commit()
-
-# Add data to dataiOS Table if unique
-unique_dataIOS.to_sql("tableIOS", conn, if_exists="append", index=True)
-conn.commit()
-
 
 # Scrape Android App Store Data
 def scrapeDataAndroid(urlAndroid):
@@ -128,6 +113,21 @@ dataAndroid = pd.merge(
 )
 dataAndroid.set_index("Mapping", inplace=True)
 
+
+# Check for duplicate iOS data, App Data should exist for only one instance per day
+today = date.today().strftime("%Y-%m-%d")
+unique_dataIOS = dataIOS[dataIOS["Timestamp"].str.startswith(today)].copy()
+cursor.execute(f"SELECT * FROM tableIOS WHERE [Date] = '{now.strftime('%B %d, %Y')}'")
+existing_data = cursor.fetchall()
+if existing_data:
+    cursor.execute(f"DELETE FROM tableIOS WHERE [Date] = '{now.strftime('%B %d, %Y')}'")
+    conn.commit()
+
+# Add data to iOS Table if unique
+unique_dataIOS.to_sql("tableIOS", conn, if_exists="append", index=True)
+conn.commit()
+
+# Check for duplicate Android data, App Data should exist for only one instance per day
 unique_dataAndroid = dataAndroid[dataAndroid["Timestamp"].str.startswith(today)].copy()
 cursor.execute(
     f"SELECT * FROM tableAndroid WHERE [Date] = '{now.strftime('%B %d, %Y')}'"
@@ -139,6 +139,8 @@ if existing_data_Android:
     )
     conn.commit()
 
+# Add data to Anbdroid Table if unique
 unique_dataAndroid.to_sql("tableAndroid", conn, if_exists="append", index=True)
 conn.commit()
+
 conn.close()
