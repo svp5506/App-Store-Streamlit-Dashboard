@@ -11,6 +11,7 @@ from appKey import keyIOS, keyAndroid
 conn = sqlite3.connect("Database/app_store_stats.db")
 cursor = conn.cursor()
 
+
 # Scrape iOS App Store Data
 def scrapeDataIOS(urlIOS):
     result = requests.get(urlIOS)
@@ -57,6 +58,7 @@ dataIOS.set_index("Mapping", inplace=True)
 now = datetime.now()
 dataIOS.insert(0, "Timestamp", now.strftime("%Y-%m-%d %H:%M:%S"))
 dataIOS.insert(0, "Date", now.strftime("%B %d, %Y"))
+
 
 # Scrape Android App Store Data
 def scrapeDataAndroid(urlAndroid):
@@ -108,6 +110,16 @@ dataAndroid = pd.DataFrame(
     ],
 )
 
+dataAndroid["Android Total Reviews"] = dataAndroid[
+    [
+        "5 Star Reviews",
+        "4 Star Reviews",
+        "3 Star Reviews",
+        "2 Star Reviews",
+        "1 Star Reviews",
+    ]
+].sum(axis=1)
+
 dataAndroid = pd.merge(
     dataAndroid, keyAndroid, on="App Name", how="outer", suffixes=("_left", "_right")
 )
@@ -116,7 +128,7 @@ dataAndroid.set_index("Mapping", inplace=True)
 
 # Check for duplicate iOS data, App Data should exist for only one instance per day
 today = date.today().strftime("%Y-%m-%d")
-unique_dataIOS = dataIOS[dataIOS["Timestamp"].str.startswith(today)].copy()
+dataIOS = dataIOS[dataIOS["Timestamp"].str.startswith(today)].copy()
 cursor.execute(f"SELECT * FROM tableIOS WHERE [Date] = '{now.strftime('%B %d, %Y')}'")
 existing_data = cursor.fetchall()
 if existing_data:
@@ -124,11 +136,11 @@ if existing_data:
     conn.commit()
 
 # Add data to iOS Table if unique
-unique_dataIOS.to_sql("tableIOS", conn, if_exists="append", index=True)
+dataIOS.to_sql("tableIOS", conn, if_exists="append", index=True)
 conn.commit()
 
 # Check for duplicate Android data, App Data should exist for only one instance per day
-unique_dataAndroid = dataAndroid[dataAndroid["Timestamp"].str.startswith(today)].copy()
+dataAndroid = dataAndroid[dataAndroid["Timestamp"].str.startswith(today)].copy()
 cursor.execute(
     f"SELECT * FROM tableAndroid WHERE [Date] = '{now.strftime('%B %d, %Y')}'"
 )
@@ -140,7 +152,67 @@ if existing_data_Android:
     conn.commit()
 
 # Add data to Anbdroid Table if unique
-unique_dataAndroid.to_sql("tableAndroid", conn, if_exists="append", index=True)
+dataAndroid.to_sql("tableAndroid", conn, if_exists="append", index=True)
 conn.commit()
+
+
+# Define the logic to update 'tableCombined' based on 'tableIOS' and 'tableAndroid'
+def update_combined_table():
+    # Drop existing 'tableCombined' if it exists
+    cursor.execute("DROP TABLE IF EXISTS tableCombined")
+
+    # Create 'tableCombined'
+    cursor.execute(
+        """
+        CREATE TABLE tableCombined (
+            Date TEXT,
+            'App Name' TEXT,
+            'Avg App Rating' REAL,
+            'Total Reviews' INTEGER,
+            'iOS App Rating' REAL,
+            'iOS Total Reviews' INTEGER,
+            'Android App Rating' REAL,
+            'Android Total Reviews' INTEGER
+        )
+    """
+    )
+
+    # Merge data from 'tableIOS' and 'tableAndroid' and insert into 'tableCombined'
+    cursor.execute(
+        """
+        INSERT INTO tableCombined (
+            'Date',
+            'App Name',
+            'Avg App Rating',
+            'Total Reviews',
+            'iOS App Rating',
+            'iOS Total Reviews',
+            'Android App Rating',
+            'Android Total Reviews'
+        )
+        SELECT
+            t1.'Date',
+            t2.'App Name',
+            ROUND((t1.'iOS App Rating' + t2.'Android App Rating') / 2,2) AS 'Avg App Rating',
+            t1.'iOS Total Reviews' + t2.'Android Total Reviews' AS 'Total Reviews',
+            ROUND(t1.'iOS App Rating', 2) AS 'iOS App Rating',
+            t1.'iOS Total Reviews',
+            ROUND(t2.'Android App Rating', 2) AS 'Android App Rating',
+            t2.'Android Total Reviews'
+        FROM
+            tableIOS AS t1
+        INNER JOIN
+            tableAndroid AS t2
+        ON
+            t1.Mapping = t2.Mapping AND t1.Date = t2.Date
+    """
+    )
+
+    # Commit the changes to the database
+    conn.commit()
+
+
+# Call the update_combined_table() function to update 'tableCombined'
+update_combined_table()
 
 conn.close()
