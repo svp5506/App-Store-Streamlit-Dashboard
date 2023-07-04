@@ -165,14 +165,15 @@ def update_combined_table():
     cursor.execute(
         """
         CREATE TABLE tableCombined (
-            Date TEXT,
+            Date DATE,
             'App Name' TEXT,
             'Avg App Rating' REAL,
             'Total Reviews' INTEGER,
             'iOS App Rating' REAL,
             'iOS Total Reviews' INTEGER,
             'Android App Rating' REAL,
-            'Android Total Reviews' INTEGER
+            'Android Total Reviews' INTEGER,
+            'Timestamp' TEXT
         )
     """
     )
@@ -188,7 +189,8 @@ def update_combined_table():
             'iOS App Rating',
             'iOS Total Reviews',
             'Android App Rating',
-            'Android Total Reviews'
+            'Android Total Reviews',
+            'Timestamp'
         )
         SELECT
             t1.'Date',
@@ -198,7 +200,8 @@ def update_combined_table():
             ROUND(t1.'iOS App Rating', 2) AS 'iOS App Rating',
             t1.'iOS Total Reviews',
             ROUND(t2.'Android App Rating', 2) AS 'Android App Rating',
-            t2.'Android Total Reviews'
+            t2.'Android Total Reviews',
+            t1.'Timestamp'
         FROM
             tableIOS AS t1
         INNER JOIN

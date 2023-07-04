@@ -3,53 +3,53 @@ import pandas as pd
 import plotly.express as px
 import sqlite3
 
-# from st_aggrid import AgGrid
+st.set_page_config(page_title="App Ratings", layout="wide")
 
 
-def get_app_ranking(app_name, date, conn, min_total_reviews=150000):
+st.title(":blue[My Spectrum App] Insights")
+
+
+def get_app_ranking(app_name, timestamp, conn, min_total_reviews=150000):
     c = conn.cursor()
     c.execute(
         """
-        SELECT `App Name`, `Avg App Rating`, `Total Reviews`, App_Ranking
+        SELECT `App Name`, `Avg App Rating`, `Total Reviews`, `Date`, App_Ranking
         FROM (
-            SELECT `App Name`, `Avg App Rating`, `Total Reviews`,
+            SELECT `App Name`, `Avg App Rating`, `Total Reviews`, `Date`,
                    RANK() OVER (ORDER BY `Avg App Rating` DESC) as App_Ranking
             FROM tableCombined
-            WHERE `Date` = ?
+            WHERE `Timestamp` = ?
         ) ranked_apps
         WHERE `App Name` = ? AND `Total Reviews` >= ?
         """,
-        (date, app_name, min_total_reviews),
+        (timestamp, app_name, min_total_reviews),
     )
     result = c.fetchone()
     return result
 
 
 conn = sqlite3.connect("Database/app_store_stats.db")
-
 app_name = "My Spectrum"
-
-st.set_page_config(page_title="App Ratings", layout="wide")
-
 
 with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# Get the latest date from the tableCombined
+# Get the latest timestamp from the tableCombined
 c = conn.cursor()
-c.execute("SELECT MAX(`Date`) FROM tableCombined")
-latest_date = c.fetchone()[0]
+c.execute("SELECT MAX(`Timestamp`) FROM tableCombined")
+latest_timestamp = c.fetchone()[0]
 
-result = get_app_ranking(app_name, latest_date, conn)
+result = get_app_ranking(app_name, latest_timestamp, conn)
 
 if result:
     average_app_rating = result[1]
     total_reviews = result[2]
     formatted_total_reviews = "{:,}".format(total_reviews)
-    app_ranking = result[3]
+    app_ranking = result[4]
+    date = result[3]
 
     with st.container():
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric(
             label="App Ranking",
             value=f"#{app_ranking}",
@@ -64,14 +64,19 @@ if result:
             value=formatted_total_reviews,
             delta="1.2 °F",
         )
+        col4.metric(
+            label="Date",
+            value=date,
+            delta="1.2 °F",
+        )
 
 else:
     st.write(
-        f"No data found for the app '{app_name}' with at least 150,000 total reviews on the latest date."
+        f"No data found for the app '{app_name}' with at least 150,000 total reviews on the latest timestamp."
     )
 
-
 conn.close()
+
 
 # tab1, tab2, tab3, tab4 = st.tabs(
 #     ["📊 Combined Ratings", "📱 iOS Ratings", "📱 Android Ratings", "Pivot Table"]
