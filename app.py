@@ -3,13 +3,15 @@ import pandas as pd
 import plotly.express as px
 import sqlite3
 
-st.set_page_config(page_title="App Ratings", layout="wide")
 
+st.set_page_config(page_title="App Ratings", layout="wide")
 
 st.title(":blue[My Spectrum App] Insights")
 
 
-def get_app_ranking(app_name, timestamp, conn, min_total_reviews=150000):
+def get_app_ranking(
+    exclude_apps=[], app_name="", timestamp="", conn=None, min_total_reviews=150000
+):
     c = conn.cursor()
     c.execute(
         """
@@ -18,18 +20,24 @@ def get_app_ranking(app_name, timestamp, conn, min_total_reviews=150000):
             SELECT `App Name`, `Avg App Rating`, `Total Reviews`, `Date`,
                    RANK() OVER (ORDER BY `Avg App Rating` DESC) as App_Ranking
             FROM tableCombined
-            WHERE `Timestamp` = ?
+            WHERE `Timestamp` = ? AND `App Name` NOT IN ({}) AND `Total Reviews` >= ?
         ) ranked_apps
-        WHERE `App Name` = ? AND `Total Reviews` >= ?
-        """,
-        (timestamp, app_name, min_total_reviews),
+        WHERE `App Name` = ?
+        """.format(
+            ",".join(["?"] * len(exclude_apps))
+        ),
+        (timestamp,) + tuple(exclude_apps) + (min_total_reviews, app_name),
     )
-    result = c.fetchone()
-    return result
+    resultAppRank = c.fetchone()
+    return resultAppRank
 
 
 conn = sqlite3.connect("Database/app_store_stats.db")
+
 app_name = "My Spectrum"
+exclude_apps = ["Cox App", "Spectrum TV"]
+min_total_reviews = 150000
+
 
 with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -39,14 +47,20 @@ c = conn.cursor()
 c.execute("SELECT MAX(`Timestamp`) FROM tableCombined")
 latest_timestamp = c.fetchone()[0]
 
-result = get_app_ranking(app_name, latest_timestamp, conn)
+resultAppRank = get_app_ranking(
+    exclude_apps=exclude_apps,
+    app_name=app_name,
+    timestamp=latest_timestamp,
+    conn=conn,
+    min_total_reviews=min_total_reviews,
+)
 
-if result:
-    average_app_rating = result[1]
-    total_reviews = result[2]
+if resultAppRank:
+    average_app_rating = resultAppRank[1]
+    total_reviews = resultAppRank[2]
     formatted_total_reviews = "{:,}".format(total_reviews)
-    app_ranking = result[4]
-    date = result[3]
+    app_ranking = resultAppRank[4]
+    date = resultAppRank[3]
 
     with st.container():
         col1, col2, col3, col4 = st.columns(4)
@@ -65,7 +79,7 @@ if result:
             delta="1.2 °F",
         )
         col4.metric(
-            label="Date",
+            label="Latest Updated",
             value=date,
             delta="1.2 °F",
         )
