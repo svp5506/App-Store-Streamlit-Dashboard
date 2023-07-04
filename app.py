@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from st_aggrid import AgGrid
 import sqlite3
 
+# from st_aggrid import AgGrid
 
-def get_app_ranking(app_name, conn, min_total_reviews=150000):
+
+def get_app_ranking(app_name, date, conn, min_total_reviews=150000):
     c = conn.cursor()
     c.execute(
         """
@@ -14,11 +15,11 @@ def get_app_ranking(app_name, conn, min_total_reviews=150000):
             SELECT `App Name`, `Avg App Rating`, `Total Reviews`,
                    RANK() OVER (ORDER BY `Avg App Rating` DESC) as App_Ranking
             FROM tableCombined
-            WHERE `Date` = (SELECT MAX(`Date`) FROM tableCombined)
+            WHERE `Date` = ?
         ) ranked_apps
         WHERE `App Name` = ? AND `Total Reviews` >= ?
         """,
-        (app_name, min_total_reviews),
+        (date, app_name, min_total_reviews),
     )
     result = c.fetchone()
     return result
@@ -27,34 +28,47 @@ def get_app_ranking(app_name, conn, min_total_reviews=150000):
 conn = sqlite3.connect("Database/app_store_stats.db")
 
 app_name = "My Spectrum"
-result = get_app_ranking(app_name, conn)
 
-average_app_rating = result[1]
-total_reviews = result[2]
-formatted_total_reviews = "{:,}".format(total_reviews)
-app_ranking = result[3]
+# Get the latest date from the tableCombined
+c = conn.cursor()
+c.execute("SELECT MAX(`Date`) FROM tableCombined")
+latest_date = c.fetchone()[0]
 
-st.set_page_config(page_title="App Ratings")
+result = get_app_ranking(app_name, latest_date, conn)
 
-with st.container():
-    col1, col2, col3 = st.columns(3)
-    col1.metric(
-        label="App Rating",
-        value=float(average_app_rating),
-        delta="1.2 °F",
-    )
+if result:
+    average_app_rating = result[1]
+    total_reviews = result[2]
+    formatted_total_reviews = "{:,}".format(total_reviews)
+    app_ranking = result[3]
 
-    col2.metric(
-        label="Total Reviews",
-        value=formatted_total_reviews,
-        delta="1.2 °F",
-    )
+    st.set_page_config(page_title="App Ratings")
 
-    col3.metric(
-        label="App Ranking", value=f"#{app_ranking}", delta="21 months in a row"
+    with st.container():
+        col1, col2, col3 = st.columns(3)
+        col1.metric(
+            label="App Rating",
+            value=float(average_app_rating),
+            delta="1.2 °F",
+        )
+
+        col2.metric(
+            label="Total Reviews",
+            value=formatted_total_reviews,
+            delta="1.2 °F",
+        )
+
+        col3.metric(
+            label="App Ranking",
+            value=f"#{app_ranking}",
+        )
+else:
+    st.write(
+        f"No data found for the app '{app_name}' with at least 150,000 total reviews on the latest date."
     )
 
 conn.close()
+
 
 # with open("style.css") as f:
 #     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
