@@ -29,6 +29,12 @@ conn = sqlite3.connect("Database/app_store_stats.db")
 
 app_name = "My Spectrum"
 
+st.set_page_config(page_title="App Ratings", layout="wide")
+
+
+with open("style.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 # Get the latest date from the tableCombined
 c = conn.cursor()
 c.execute("SELECT MAX(`Date`) FROM tableCombined")
@@ -42,37 +48,30 @@ if result:
     formatted_total_reviews = "{:,}".format(total_reviews)
     app_ranking = result[3]
 
-    st.set_page_config(page_title="App Ratings")
-
     with st.container():
         col1, col2, col3 = st.columns(3)
         col1.metric(
+            label="App Ranking",
+            value=f"#{app_ranking}",
+        )
+        col2.metric(
             label="App Rating",
             value=float(average_app_rating),
             delta="1.2 °F",
         )
-
-        col2.metric(
+        col3.metric(
             label="Total Reviews",
             value=formatted_total_reviews,
             delta="1.2 °F",
         )
 
-        col3.metric(
-            label="App Ranking",
-            value=f"#{app_ranking}",
-        )
 else:
     st.write(
         f"No data found for the app '{app_name}' with at least 150,000 total reviews on the latest date."
     )
 
+
 conn.close()
-
-
-# with open("style.css") as f:
-#     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
 
 # tab1, tab2, tab3, tab4 = st.tabs(
 #     ["📊 Combined Ratings", "📱 iOS Ratings", "📱 Android Ratings", "Pivot Table"]
