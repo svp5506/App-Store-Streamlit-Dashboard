@@ -5,22 +5,59 @@ from st_aggrid import AgGrid
 import sqlite3
 
 
+def get_app_ranking(app_name, conn, min_total_reviews=150000):
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT `App Name`, `Avg App Rating`, `Total Reviews`, App_Ranking
+        FROM (
+            SELECT `App Name`, `Avg App Rating`, `Total Reviews`,
+                   RANK() OVER (ORDER BY `Avg App Rating` DESC) as App_Ranking
+            FROM tableCombined
+            WHERE `Date` = (SELECT MAX(`Date`) FROM tableCombined)
+        ) ranked_apps
+        WHERE `App Name` = ? AND `Total Reviews` >= ?
+        """,
+        (app_name, min_total_reviews),
+    )
+    result = c.fetchone()
+    return result
+
+
 conn = sqlite3.connect("Database/app_store_stats.db")
-print("Database Accessed")
 
-c = conn.cursor()
-c.execute(
-    "SELECT AVG(`Avg App Rating`) FROM tableCombined WHERE `App Name` = 'My Spectrum' AND `Date` = (SELECT MAX(`Date`) FROM tableCombined)"
-)
+app_name = "My Spectrum"
+result = get_app_ranking(app_name, conn)
 
-appRatingMSA = c.fetchone()
+average_app_rating = result[1]
+total_reviews = result[2]
+formatted_total_reviews = "{:,}".format(total_reviews)
+app_ranking = result[3]
 
-st.set_page_config(page_title="App Ratings", layout="wide")
+st.set_page_config(page_title="App Ratings")
 
-st.metric(label="My Spectrum App", value=float(appRatingMSA[0]), delta="1.2 °F")
+with st.container():
+    col1, col2, col3 = st.columns(3)
+    col1.metric(
+        label="App Rating",
+        value=float(average_app_rating),
+        delta="1.2 °F",
+    )
 
+    col2.metric(
+        label="Total Reviews",
+        value=formatted_total_reviews,
+        delta="1.2 °F",
+    )
+
+    col3.metric(
+        label="App Ranking", value=f"#{app_ranking}", delta="21 months in a row"
+    )
 
 conn.close()
+
+# with open("style.css") as f:
+#     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 # tab1, tab2, tab3, tab4 = st.tabs(
