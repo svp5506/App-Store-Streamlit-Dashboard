@@ -2,15 +2,24 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import sqlite3
+import streamlit as st
+from PIL import Image
 
 
 st.set_page_config(page_title="App Ratings", layout="wide")
 
-st.title(":blue[My Spectrum App] Insights")
+logoMSA = Image.open('images/logoMSA.png')
+
+with st.container():
+    col1, col2 = st.columns([1,20])
+    with col1:
+        st.image(logoMSA,output_format="PNG",width = 100)
+    with col2:
+        st.title(":blue[My Spectrum App] Insights")
 
 
-def get_app_ranking(
-    exclude_apps=[], app_name="", timestamp="", conn=None, min_total_reviews=150000
+def get_app_stats(
+    excludeApps=[], app_name="", timestamp="", conn=None, minTotalReviews=150000
 ):
     c = conn.cursor()
     c.execute(
@@ -24,9 +33,9 @@ def get_app_ranking(
         ) ranked_apps
         WHERE `App Name` = ?
         """.format(
-            ",".join(["?"] * len(exclude_apps))
+            ",".join(["?"] * len(excludeApps))
         ),
-        (timestamp,) + tuple(exclude_apps) + (min_total_reviews, app_name),
+        (timestamp,) + tuple(excludeApps) + (minTotalReviews, app_name),
     )
     resultAppRank = c.fetchone()
     return resultAppRank
@@ -35,8 +44,8 @@ def get_app_ranking(
 conn = sqlite3.connect("Database/app_store_stats.db")
 
 app_name = "My Spectrum"
-exclude_apps = ["Cox App", "Spectrum TV"]
-min_total_reviews = 150000
+excludeApps = ["Cox App", "Spectrum TV"]
+minTotalReviews = 150000
 
 
 with open("style.css") as f:
@@ -47,12 +56,12 @@ c = conn.cursor()
 c.execute("SELECT MAX(`Timestamp`) FROM tableCombined")
 latest_timestamp = c.fetchone()[0]
 
-resultAppRank = get_app_ranking(
-    exclude_apps=exclude_apps,
+resultAppRank = get_app_stats(
+    excludeApps= excludeApps,
     app_name=app_name,
     timestamp=latest_timestamp,
     conn=conn,
-    min_total_reviews=min_total_reviews,
+    minTotalReviews=minTotalReviews,
 )
 
 if resultAppRank:
@@ -63,7 +72,7 @@ if resultAppRank:
     date = resultAppRank[3]
 
     with st.container():
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns([2,2,3,3,15])
         col1.metric(
             label="App Ranking",
             value=f"#{app_ranking}",
