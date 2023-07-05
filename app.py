@@ -8,11 +8,14 @@ from PIL import Image
 
 st.set_page_config(page_title="App Ratings", layout="wide")
 
+#! CSS Style Sheet
 with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
+# Heading Section [MSA Logo, Page Title]
 logoMSA = Image.open("images/logoMSA.png")
 
+#! CONTAINER ONE
 with st.container():
     col1, col2 = st.columns([1, 10])
     with col1:
@@ -20,9 +23,8 @@ with st.container():
     with col2:
         st.title(":blue[My Spectrum App] Insights")
 
-########################################
 
-
+# Retrieve App Stats from tableCombined
 def get_app_stats(
     excludeApps=[], app_name="", timestamp="", conn=None, minTotalReviews=150000
 ):
@@ -46,8 +48,10 @@ def get_app_stats(
     return resultAppRank
 
 
+# Connect to Database
 conn = sqlite3.connect("Database/app_store_stats.db")
 
+# TODO: Refactor which user-selectable filters
 app_name = "My Spectrum"
 excludeApps = ["Cox App", "Spectrum TV"]
 minTotalReviews = 150000
@@ -57,7 +61,7 @@ c = conn.cursor()
 c.execute("SELECT MAX(`Timestamp`) FROM tableCombined")
 latest_timestamp = c.fetchone()[0]
 
-
+# Pass Values to Parameters
 resultAppRank = get_app_stats(
     excludeApps=excludeApps,
     app_name=app_name,
@@ -66,6 +70,8 @@ resultAppRank = get_app_stats(
     minTotalReviews=minTotalReviews,
 )
 
+#! CONTAINER TWO
+# Displaying metrics if available
 if resultAppRank:
     average_app_rating = resultAppRank[1]
     total_reviews = resultAppRank[2]
@@ -119,16 +125,23 @@ combinedData = combinedData.loc[
     (combinedData["Date"] >= startDate) & (combinedData["Date"] <= endDate)
 ]
 
-trendRanking = combinedData[["Date", "App Name", "Avg App Rating"]]
+trendRating = combinedData[["Date", "App Name", "Avg App Rating"]]
 
-pivoted_data = trendRanking.pivot(
+pivotedData = trendRating.pivot(
     index="Date", columns="App Name", values="Avg App Rating"
 )
 
+
+# Unique App Names
+appNames = combinedData["App Name"].unique()
+defaultAppFilter = ["My Spectrum", "My Verizon"]
+
+
+with st.sidebar.expander("Filters"):
+    selectApps = st.multiselect("Select Apps", appNames, default=defaultAppFilter)
 with st.container():
-    st.line_chart(pivoted_data, use_container_width=True)
-
-
+    filteredData = pivotedData[selectApps]
+    st.line_chart(filteredData, use_container_width=True)
 conn.close()
 
 
