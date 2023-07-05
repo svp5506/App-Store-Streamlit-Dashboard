@@ -8,14 +8,19 @@ from PIL import Image
 
 st.set_page_config(page_title="App Ratings", layout="wide")
 
-logoMSA = Image.open('images/logoMSA.png')
+with open("style.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+logoMSA = Image.open("images/logoMSA.png")
 
 with st.container():
-    col1, col2 = st.columns([1,20])
+    col1, col2 = st.columns([1, 10])
     with col1:
-        st.image(logoMSA,output_format="PNG",width = 100)
+        st.image(logoMSA, output_format="PNG", width=100)
     with col2:
         st.title(":blue[My Spectrum App] Insights")
+
+########################################
 
 
 def get_app_stats(
@@ -47,17 +52,14 @@ app_name = "My Spectrum"
 excludeApps = ["Cox App", "Spectrum TV"]
 minTotalReviews = 150000
 
-
-with open("style.css") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
 # Get the latest timestamp from the tableCombined
 c = conn.cursor()
 c.execute("SELECT MAX(`Timestamp`) FROM tableCombined")
 latest_timestamp = c.fetchone()[0]
 
+
 resultAppRank = get_app_stats(
-    excludeApps= excludeApps,
+    excludeApps=excludeApps,
     app_name=app_name,
     timestamp=latest_timestamp,
     conn=conn,
@@ -72,7 +74,7 @@ if resultAppRank:
     date = resultAppRank[3]
 
     with st.container():
-        col1, col2, col3, col4, col5 = st.columns([2,2,3,3,15])
+        col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 4, 10])
         col1.metric(
             label="App Ranking",
             value=f"#{app_ranking}",
@@ -97,6 +99,35 @@ else:
     st.write(
         f"No data found for the app '{app_name}' with at least 150,000 total reviews on the latest timestamp."
     )
+
+########################################
+
+startDateStr = "2023-06-28 00:00:00"
+endDateStr = "2023-07-04 23:59:59"
+
+combinedSQLTable = """
+    SELECT *
+    FROM tableCombined
+"""
+combinedData = pd.read_sql_query(combinedSQLTable, conn)
+
+startDate = pd.to_datetime(startDateStr)
+endDate = pd.to_datetime(endDateStr)
+
+combinedData["Date"] = pd.to_datetime(combinedData["Date"])
+combinedData = combinedData.loc[
+    (combinedData["Date"] >= startDate) & (combinedData["Date"] <= endDate)
+]
+
+trendRanking = combinedData[["Date", "App Name", "Avg App Rating"]]
+
+pivoted_data = trendRanking.pivot(
+    index="Date", columns="App Name", values="Avg App Rating"
+)
+
+with st.container():
+    st.line_chart(pivoted_data, use_container_width=True)
+
 
 conn.close()
 

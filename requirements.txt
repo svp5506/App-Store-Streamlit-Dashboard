@@ -2,3 +2,7 @@ streamlit
 plotly
 openpyxl
 streamlit-aggrid
+datetime
+bs4
+sqlite3
+PIL
